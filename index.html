@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tobis Daily News</title>
+<meta name="theme-color" content="#E1DFDA">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Daily News">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#E1DFDA; --ink:#1F1F1F; --ink-2:#4A4A4A;
+  --medien:#9FB1AF; --medien-peek:#8B9E9C;
+  --ki:#E2B9B6; --ki-peek:#CFA19E;
+  --signal:#E07A66; --muted:#D0CEC8;
+  --sans:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-text-size-adjust:100%}
+body{overflow:hidden;overscroll-behavior:none}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+#app{height:100vh;height:100dvh;max-width:600px;margin:0 auto;display:flex;flex-direction:column;position:relative}
+
+header{padding:calc(24px + env(safe-area-inset-top)) 20px 0;display:flex;flex-direction:column;align-items:center}
+.mark{font-size:30px;font-weight:800;letter-spacing:-.035em;line-height:1;white-space:nowrap}
+.date{margin-top:8px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+nav{display:flex;gap:8px;margin-top:16px}
+.chip{min-height:42px;padding:0 15px;border-radius:999px;border:1.5px solid var(--ink);background:transparent;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.chip .n{font-family:var(--mono);font-weight:400;font-size:12px;font-variant-numeric:tabular-nums}
+.dot{width:10px;height:10px;border-radius:5px;border:1px solid var(--ink);display:inline-block}
+.dot.ki{background:var(--ki)} .dot.medien{background:var(--medien)}
+
+main{flex:1;min-height:0;position:relative;margin:18px 20px 0}
+.peek{position:absolute;inset:12px 12px -10px;border-radius:30px}
+.peek[data-s="KI"]{background:var(--ki-peek)} .peek[data-s="Medien"]{background:var(--medien-peek)}
+
+.card{position:absolute;inset:0;border-radius:30px;display:flex;flex-direction:column;color:var(--ink);touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab;overflow:hidden;will-change:transform}
+.card[data-s="KI"]{background:var(--ki);--tile:#E2B9B6;--tile0:rgba(226,185,182,0)}
+.card[data-s="Medien"]{background:var(--medien);--tile:#9FB1AF;--tile0:rgba(159,177,175,0)}
+.card-top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 22px 0 24px;font-size:13px;min-height:52px}
+.card-top .sec{font-weight:600}
+.pill{text-decoration:none;font-weight:600;font-size:13px;padding:9px 14px 9px 16px;border-radius:999px;border:1.5px solid var(--ink);display:inline-flex;align-items:center;gap:6px}
+.body{flex:1;min-height:0;position:relative;margin-top:6px}
+.sc{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;padding:10px 24px 22px}
+.sc::-webkit-scrollbar{display:none}
+.trend{display:inline-block;padding:5px 11px;border-radius:999px;background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11.5px;font-weight:500;margin-bottom:12px}
+h1{margin:0;font-weight:700;font-size:27px;line-height:1.12;letter-spacing:-.022em;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word;text-wrap:balance}
+.sum{margin:14px 0 0;font-size:15.5px;line-height:1.5;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word;text-wrap:pretty}
+.fade{position:absolute;left:0;right:0;bottom:0;height:44px;pointer-events:none;transition:opacity 160ms;background:linear-gradient(var(--tile0),var(--tile));opacity:0}
+.card-bot{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:10px 24px 20px;font-family:var(--mono);font-size:11.5px;line-height:1.6}
+.nl{position:relative}
+.nl a.open{white-space:nowrap;text-underline-offset:3px;padding:6px 0;display:inline-block}
+.menu{position:absolute;right:0;bottom:100%;margin-bottom:6px;background:var(--ink);color:var(--paper);border-radius:18px;padding:6px;min-width:190px;font-family:var(--mono);font-size:12px;font-weight:500}
+.menu a{display:block;padding:10px 12px;text-decoration:none;border-radius:12px}
+.menu a:hover{background:rgba(225,223,218,.14)}
+.hint{position:absolute;inset:0;border-radius:30px;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 16px;pointer-events:none;font-size:clamp(36px,12vw,48px);font-weight:800;letter-spacing:-.03em;opacity:0}
+.hint.read{background:rgba(31,31,31,.9);color:var(--paper)}
+.hint.save{background:rgba(224,122,102,.95);color:var(--ink)}
+
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:0 24px}
+.empty .t{font-size:40px;font-weight:800;letter-spacing:-.03em;line-height:1.05}
+.empty .s{font-size:16px;line-height:1.5}
+.rest{margin-top:8px;min-height:46px;padding:0 20px;border-radius:999px;border:none;background:var(--ink);color:var(--paper);font-size:14px;font-weight:600}
+
+footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);gap:10px;align-items:center;padding:18px 20px calc(26px + env(safe-area-inset-bottom));font-size:15px;font-weight:600}
+.btn{min-height:54px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid var(--ink);background:transparent}
+.btn.save{background:var(--signal);border-color:var(--signal)}
+.round{width:54px;height:54px;border-radius:27px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--ink);background:transparent;padding:0}
+.round.skip{background:var(--muted);border-color:var(--muted)}
+.keys{display:none}
+@media (min-width:900px) and (hover:hover){
+  .keys{display:block;text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink-2);padding:0 20px 18px;margin-top:-12px}
+}
+.toast{position:fixed;left:50%;transform:translateX(-50%);width:calc(100% - 40px);max-width:520px;bottom:calc(106px + env(safe-area-inset-bottom));background:var(--ink);color:var(--paper);border-radius:22px;padding:6px 10px 6px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;font-weight:500;z-index:10;min-height:44px}
+.toast button{background:none;border:none;color:var(--ki);font-weight:700;min-height:44px;padding:0 8px;text-decoration:underline;text-underline-offset:3px}
+@media (prefers-reduced-motion:reduce){.fade{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="mark">Tobis Daily News</div>
+    <div class="date" id="date"></div>
+    <nav id="filters" aria-label="Filter">
+      <button class="chip" data-f="Alle" aria-pressed="true"><span>Alle</span><span class="n" id="cAlle">0</span></button>
+      <button class="chip" data-f="KI" aria-pressed="false"><span class="dot ki"></span><span>Nur KI</span><span class="n" id="cKI">0</span></button>
+      <button class="chip" data-f="Medien" aria-pressed="false"><span class="dot medien"></span><span>Nur Medien</span><span class="n" id="cMedien">0</span></button>
+    </nav>
+  </header>
+
+  <main>
+    <div class="peek" id="peek" hidden></div>
+
+    <article class="card" id="card" hidden>
+      <div class="card-top">
+        <span class="sec" id="secLabel"></span>
+        <a class="pill" id="artLink" href="#" target="_blank" rel="noopener" hidden>Zum Artikel<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a>
+      </div>
+      <div class="body">
+        <div class="sc" id="sc">
+          <div class="trend" id="trend" hidden></div>
+          <h1 id="hl"></h1>
+          <p class="sum" id="sum"></p>
+        </div>
+        <div class="fade" id="fade"></div>
+      </div>
+      <div class="card-bot">
+        <div><div id="src"></div><div id="dt"></div></div>
+        <div class="nl">
+          <div class="menu" id="menu" hidden></div>
+          <a class="open" id="nlLink" href="#" rel="noopener">Newsletter öffnen</a>
+        </div>
+      </div>
+      <div class="hint read" id="hRead">Gelesen</div>
+      <div class="hint save" id="hSave">Ab in Notion</div>
+    </article>
+
+    <div class="empty" id="empty" hidden>
+      <div class="t" id="emptyT"></div>
+      <div class="s" id="emptyS"></div>
+      <button class="rest" id="restBtn" hidden></button>
+    </div>
+  </main>
+
+  <footer>
+    <button class="btn read" id="bRead"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1F1F1F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4"/></svg>Gelesen</button>
+    <button class="round undo" id="bUndo" aria-label="Rückgängig"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F1F1F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+    <button class="round skip" id="bSkip" aria-label="Später"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F1F1F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></button>
+    <button class="btn save" id="bSave">Merken<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1F1F1F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+  </footer>
+  <div class="keys">← Gelesen &nbsp;·&nbsp; → Merken &nbsp;·&nbsp; ↓ Später &nbsp;·&nbsp; Z Rückgängig &nbsp;·&nbsp; Enter Artikel</div>
+</div>
+
+<div class="toast" id="toast" hidden role="status" aria-live="polite">
+  <span id="toastText"></span>
+  <button id="toastUndo">Rückgängig</button>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var API = window.DAILY_NEWS_API || '';
+  var CACHE = 'dn_feed', KEYSTORE = 'dn_key', TZ = 'Europe/Berlin';
+  var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v) { return Math.max(0, Math.min(1, v)); };
+
+  var S = { byId: {}, order: [], history: [], filter: 'Alle', mode: 'loading', message: '',
+            offline: false, leaving: false, dx: 0, pose: 'none', dragging: false, noTrans: false, shown: null };
+  var KEY = '', lastLoad = 0, toastTimer = null;
+
+  // ── Schlüssel: #key=XYZ einmal übernehmen, aus der URL entfernen ──
+  function initKey() {
+    var m = location.hash.match(/[#&]key=([^&]+)/);
+    if (m) {
+      KEY = decodeURIComponent(m[1]);
+      try { localStorage.setItem(KEYSTORE, KEY); } catch (e) {}
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    } else {
+      try { KEY = localStorage.getItem(KEYSTORE) || ''; } catch (e) {}
+    }
+  }
+
+  // ── Netzwerk ──
+  function apiReady() { return API && API.indexOf('HIER_') !== 0; }
+  function getJSON(url, opts, ms) {
+    opts = opts || {};
+    var ctrl = window.AbortController ? new AbortController() : null;
+    if (ctrl) opts.signal = ctrl.signal;
+    var t = setTimeout(function () { if (ctrl) ctrl.abort(); }, ms || 30000);
+    return fetch(url, opts).then(function (r) { return r.json(); })
+      .then(function (j) { clearTimeout(t); return j; }, function (e) { clearTimeout(t); throw e; });
+  }
+  var chain = Promise.resolve();
+  function post(action, id) {
+    var p = chain.then(function () {
+      return getJSON(API, { method: 'POST', body: JSON.stringify({ key: KEY, action: action, id: id }) });
+    }).then(function (r) {
+      if (!r || !r.ok) throw new Error((r && r.error) || 'Fehler');
+      return r;
+    });
+    chain = p.then(function () {}, function () {});
+    return p;
+  }
+  function isOffline() { return S.offline || navigator.onLine === false; }
+
+  // ── Laden ──
+  function readCache() { try { return JSON.parse(localStorage.getItem(CACHE)); } catch (e) { return null; } }
+  function load() {
+    if (!KEY) { setMode('nokey'); return Promise.resolve(); }
+    if (!apiReady()) { setMode('noconfig'); return Promise.resolve(); }
+    return getJSON(API + '?action=feed&key=' + encodeURIComponent(KEY)).then(function (r) {
+      if (!r.ok) {
+        if (r.status === 401) { setMode('badkey'); return; }
+        throw new Error(r.error || 'Fehler');
+      }
+      S.offline = false; lastLoad = Date.now();
+      try { localStorage.setItem(CACHE, JSON.stringify(r)); } catch (e) {}
+      apply(r);
+    }).catch(function (e) {
+      console.warn(e);
+      var c = readCache();
+      if (c) { S.offline = true; apply(c); }
+      else setMode('error', 'Der Feed konnte nicht geladen werden. Bitte Verbindung prüfen.');
+    });
+  }
+  function apply(r) {
+    S.byId = {};
+    (r.items || []).concat(r.undoItems || []).forEach(function (i) { S.byId[i.id] = i; });
+    S.order = (r.items || []).filter(function (i) { return i.status === 'open'; }).map(function (i) { return i.id; });
+    S.history = (r.actions || []).slice().sort(function (a, b) { return a.ts - b.ts; })
+      .filter(function (a) { return S.byId[a.itemId]; })
+      .map(function (a) { return { id: a.itemId, section: S.byId[a.itemId].section, type: a.type }; });
+    S.mode = 'feed'; S.shown = null; S.dx = 0; S.pose = 'none'; S.noTrans = true;
+    render();
+  }
+  function setMode(m, msg) { S.mode = m; S.message = msg || ''; render(); }
+  function resync() { chain.then(function () { return load(); }); }
+
+  // ── Daten ──
+  function queue(f) {
+    return S.order.filter(function (id) { return f === 'Alle' || S.byId[id].section === f; })
+      .map(function (id) { return S.byId[id]; });
+  }
+  var dayFmt = new Intl.DateTimeFormat('sv-SE', { timeZone: TZ });
+  var wdFmt = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, weekday: 'short' });
+  function since(c) {
+    if (!c.createdAt) return '';
+    var d = new Date(c.createdAt);
+    if (dayFmt.format(d) >= dayFmt.format(new Date())) return '';
+    return ' · seit ' + wdFmt.format(d).replace('.', '');
+  }
+  function gmailUrl(t) { return 'https://mail.google.com/mail/u/0/#all/' + t; }
+
+  // ── Anzeige ──
+  var card = $('card');
+  var EMPTY = {
+    loading: ['', 'Lädt …'],
+    nokey: ['Kein Zugang.', 'Öffne den Link mit #key=… einmal auf diesem Gerät.'],
+    noconfig: ['Nicht eingerichtet.', 'In config.js fehlt die Web-App-URL.'],
+    badkey: ['Zugang abgelehnt.', 'Der Schlüssel im Link ist ungültig.'],
+    error: ['Keine Verbindung.', '']
+  };
+
+  function renderHeader() {
+    $('date').textContent = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()) + (isOffline() ? ' · offline' : '');
+    ['Alle', 'KI', 'Medien'].forEach(function (f) { $('c' + f).textContent = String(queue(f).length); });
+    Array.prototype.forEach.call(document.querySelectorAll('.chip'), function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-f') === S.filter ? 'true' : 'false');
+    });
+  }
+
+  function fill(c) {
+    card.setAttribute('data-s', c.section);
+    $('secLabel').textContent = c.section === 'KI' ? 'Künstliche Intelligenz' : 'Medien';
+    var a = $('artLink');
+    if (c.urls && c.urls.length) { a.href = c.urls[0]; a.hidden = false; } else { a.hidden = true; }
+    var tr = $('trend');
+    if (c.trending) { tr.textContent = c.trendCount + ' Newsletter'; tr.hidden = false; } else { tr.hidden = true; }
+    $('hl').textContent = c.headline;
+    $('sum').textContent = c.summary;
+    $('src').textContent = c.source;
+    $('dt').textContent = c.date + since(c);
+    var tids = c.threadIds || [], nl = $('nlLink'), menu = $('menu');
+    menu.hidden = true; menu.textContent = '';
+    if (!tids.length) { nl.hidden = true; }
+    else {
+      nl.hidden = false;
+      if (tids.length === 1) { nl.href = gmailUrl(tids[0]); nl.target = '_blank'; nl.setAttribute('data-multi', ''); }
+      else {
+        nl.href = '#'; nl.removeAttribute('target'); nl.setAttribute('data-multi', '1');
+        var names = String(c.source || '').split(/,\s*/);
+        tids.forEach(function (t, i) {
+          var m = document.createElement('a');
+          m.href = gmailUrl(t); m.target = '_blank'; m.rel = 'noopener';
+          m.textContent = names.length === tids.length ? names[i] : 'Newsletter ' + (i + 1);
+          menu.appendChild(m);
+        });
+      }
+    }
+    $('sc').scrollTop = 0;
+  }
+
+  function motion() {
+    card.style.transition = (S.dragging || S.noTrans) ? 'none' : 'transform 240ms cubic-bezier(.2,.7,.2,1), opacity 200ms';
+    if (S.pose === 'down') {
+      card.style.transform = 'translateY(28px) scale(0.94)'; card.style.opacity = '0';
+    } else {
+      card.style.transform = 'translateX(' + S.dx + 'px) rotate(' + (S.dx / 28) + 'deg)'; card.style.opacity = '1';
+    }
+    $('hRead').style.opacity = clamp(-S.dx / 110);
+    $('hSave').style.opacity = clamp(S.dx / 110);
+  }
+
+  function checkScroll() {
+    var el = $('sc');
+    $('fade').style.opacity = (!card.hidden && el.scrollHeight - el.scrollTop - el.clientHeight > 4) ? 1 : 0;
+  }
+
+  function render() {
+    renderHeader();
+    var q = queue(S.filter), c = (S.mode === 'feed') ? q[0] : null, n = (S.mode === 'feed') ? q[1] : null;
+    var undoBtn = $('bUndo'), skipBtn = $('bSkip');
+    undoBtn.style.opacity = S.history.length ? 1 : 0.35;
+    skipBtn.style.opacity = q.length > 1 ? 1 : 0.4;
+
+    var peek = $('peek');
+    if (n) { peek.setAttribute('data-s', n.section); peek.hidden = false; } else { peek.hidden = true; }
+
+    if (c) {
+      card.hidden = false; $('empty').hidden = true;
+      if (S.shown !== c.id) { fill(c); S.shown = c.id; }
+      motion();
+    } else {
+      card.hidden = true; S.shown = null; $('empty').hidden = false;
+      var all = queue('Alle').length, e;
+      if (S.mode === 'feed') e = ['Alles gelesen.', 'Die nächste Ausgabe kommt morgen um 7 Uhr.'];
+      else e = EMPTY[S.mode] || ['', ''];
+      $('emptyT').textContent = e[0];
+      $('emptyS').textContent = (S.mode === 'error' && S.message) ? S.message : e[1];
+      var rb = $('restBtn');
+      if (S.mode === 'feed' && S.filter !== 'Alle' && all > 0) { rb.textContent = 'Alle anzeigen (' + all + ')'; rb.hidden = false; }
+      else rb.hidden = true;
+    }
+    checkScroll();
+  }
+
+  // ── Hinweise ──
+  function toast(text, withUndo) {
+    clearTimeout(toastTimer);
+    $('toastText').textContent = text;
+    $('toastUndo').hidden = !withUndo;
+    $('toast').hidden = false;
+    toastTimer = setTimeout(hideToast, withUndo ? 3500 : 5500);
+  }
+  function hideToast() { clearTimeout(toastTimer); $('toast').hidden = true; }
+  function hideMenu() { $('menu').hidden = true; }
+
+  // ── Aktionen (optimistisch, Requests laufen nacheinander im Hintergrund) ──
+  function ensureFilterShows(section) {
+    if (S.filter !== 'Alle' && S.filter !== section) S.filter = 'Alle';
+  }
+  function failed(entry, it, e) {
+    console.warn(e);
+    var i = S.history.indexOf(entry); if (i >= 0) S.history.splice(i, 1);
+    S.order = [it.id].concat(S.order.filter(function (x) { return x !== it.id; }));
+    ensureFilterShows(it.section);
+    S.shown = null; S.dx = 0; S.pose = 'none'; S.noTrans = true;
+    render();
+    toast(entry.type === 'save' ? 'Speichern in Notion fehlgeschlagen. Karte ist zurück im Stapel.'
+                                : 'Aktion fehlgeschlagen. Karte ist zurück im Stapel.', false);
+    resync();
+  }
+
+  function commit(dir) {
+    var q = queue(S.filter);
+    if (S.mode !== 'feed' || !q.length || S.leaving) return;
+    if (isOffline()) { toast('Keine Verbindung. Aktion nicht ausgeführt.', false); return; }
+    var it = q[0]; S.leaving = true; hideMenu();
+    var finish = function () {
+      S.leaving = false;
+      var entry = { id: it.id, section: it.section, type: dir > 0 ? 'save' : 'read' };
+      S.order = S.order.filter(function (x) { return x !== it.id; });
+      S.history.push(entry);
+      S.dx = 0; S.dragging = false; S.noTrans = true;
+      render();
+      if (dir > 0) toast('In Notion gespeichert', true); else hideToast();
+      post(entry.type, it.id).catch(function (e) { failed(entry, it, e); });
+    };
+    if (reduce) { finish(); return; }
+    S.dragging = false; S.noTrans = false; S.dx = dir * 520; motion();
+    setTimeout(finish, 230);
+  }
+
+  function skip() {
+    var q = queue(S.filter);
+    if (S.mode !== 'feed' || q.length < 2 || S.leaving) return;
+    if (isOffline()) { toast('Keine Verbindung. Aktion nicht ausgeführt.', false); return; }
+    var it = q[0]; S.leaving = true; hideMenu();
+    var finish = function () {
+      S.leaving = false;
+      var entry = { id: it.id, section: it.section, type: 'skip' };
+      S.order = S.order.filter(function (x) { return x !== it.id; }).concat(it.id);
+      S.history.push(entry);
+      S.pose = 'none'; S.dx = 0; S.noTrans = true;
+      render();
+      toast('Ans Ende gelegt', true);
+      post('skip', it.id).catch(function (e) { failed(entry, it, e); });
+    };
+    if (reduce) { finish(); return; }
+    S.pose = 'down'; S.noTrans = false; S.dx = 0; motion();
+    setTimeout(finish, 200);
+  }
+
+  function undo() {
+    if (S.mode !== 'feed' || !S.history.length || S.leaving) return;
+    if (isOffline()) { toast('Keine Verbindung. Aktion nicht ausgeführt.', false); return; }
+    var e = S.history.pop(), it = S.byId[e.id];
+    ensureFilterShows(e.section);
+    S.order = [e.id].concat(S.order.filter(function (x) { return x !== e.id; }));
+    hideToast(); hideMenu();
+    S.shown = null;
+    if (reduce) { S.pose = 'none'; S.dx = 0; S.noTrans = true; render(); }
+    else {
+      S.pose = e.type === 'skip' ? 'down' : 'none';
+      S.dx = e.type === 'skip' ? 0 : (e.type === 'save' ? 520 : -520);
+      S.noTrans = true; render(); void card.offsetWidth;
+      setTimeout(function () { S.dx = 0; S.pose = 'none'; S.noTrans = false; motion(); }, 40);
+    }
+    post('undo', e.id).catch(function (err) {
+      console.warn(err);
+      S.history.push(e);
+      S.order = S.order.filter(function (x) { return x !== e.id; });
+      if (e.type === 'skip') S.order.push(e.id);
+      S.shown = null; S.dx = 0; S.pose = 'none'; S.noTrans = true;
+      render();
+      toast('Rückgängig fehlgeschlagen. Die Aktion bleibt bestehen.', false);
+      resync();
+    });
+  }
+
+  function openArticle() {
+    var c = queue(S.filter)[0];
+    if (c && c.urls && c.urls.length) window.open(c.urls[0], '_blank', 'noopener');
+  }
+
+  // ── Gesten: nach 10 px entscheiden, ob gewischt oder gescrollt wird ──
+  var sx = 0, sy = 0, tracking = false, pid = null;
+  card.addEventListener('pointerdown', function (e) {
+    if (S.leaving || e.button > 0) return;
+    sx = e.clientX; sy = e.clientY; tracking = true; pid = e.pointerId;
+  });
+  card.addEventListener('pointermove', function (e) {
+    if (!tracking) return;
+    var dx = e.clientX - sx, dy = e.clientY - sy;
+    if (!S.dragging) {
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        try { card.setPointerCapture(pid); } catch (err) {}
+        S.dragging = true; S.noTrans = false; S.dx = dx; motion();
+      } else if (Math.abs(dy) > 10) { tracking = false; }
+      return;
+    }
+    S.dx = dx; motion();
+  });
+  function up() {
+    tracking = false;
+    if (!S.dragging) return;
+    var dx = S.dx;
+    if (dx > 90) commit(1);
+    else if (dx < -90) commit(-1);
+    else { S.dragging = false; S.dx = 0; motion(); }
+  }
+  card.addEventListener('pointerup', up);
+  card.addEventListener('pointercancel', up);
+  ['artLink', 'nlLink', 'menu'].forEach(function (id) {
+    $(id).addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+  });
+
+  // ── Bedienung ──
+  $('bRead').addEventListener('click', function () { commit(-1); });
+  $('bSave').addEventListener('click', function () { commit(1); });
+  $('bSkip').addEventListener('click', skip);
+  $('bUndo').addEventListener('click', undo);
+  $('toastUndo').addEventListener('click', undo);
+  $('restBtn').addEventListener('click', function () { S.filter = 'Alle'; S.dx = 0; S.pose = 'none'; S.noTrans = true; S.shown = null; render(); });
+  Array.prototype.forEach.call(document.querySelectorAll('.chip'), function (b) {
+    b.addEventListener('click', function () {
+      S.filter = b.getAttribute('data-f'); S.dx = 0; S.pose = 'none'; S.noTrans = true; S.shown = null; hideMenu(); render();
+    });
+  });
+  $('nlLink').addEventListener('click', function (e) {
+    if ($('nlLink').getAttribute('data-multi') === '1') { e.preventDefault(); $('menu').hidden = !$('menu').hidden; }
+  });
+  document.addEventListener('click', function (e) {
+    if (!$('menu').hidden && !e.target.closest('.nl')) hideMenu();
+  });
+  $('sc').addEventListener('scroll', checkScroll);
+  window.addEventListener('resize', checkScroll);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+    switch (e.key) {
+      case 'ArrowLeft': e.preventDefault(); commit(-1); break;
+      case 'ArrowRight': e.preventDefault(); commit(1); break;
+      case 'ArrowDown': e.preventDefault(); skip(); break;
+      case 'z': case 'Z': case 'Backspace': e.preventDefault(); undo(); break;
+      case 'Enter': if (t === document.body) { e.preventDefault(); openArticle(); } break;
+    }
+  });
+
+  window.addEventListener('online', function () { S.offline = false; load(); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && Date.now() - lastLoad > 5 * 60 * 1000 && !S.leaving) load();
+  });
+  try { document.fonts.ready.then(checkScroll); } catch (e) {}
+
+  initKey();
+  render();
+  load();
+})();
+</script>
+</body>
+</html>
