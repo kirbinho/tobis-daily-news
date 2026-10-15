@@ -10,8 +10,8 @@
 <meta name="apple-mobile-web-app-title" content="Daily News">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -74,6 +74,9 @@ h1{margin:0;font-weight:700;font-size:27px;line-height:1.12;letter-spacing:-.022
 .empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:0 24px}
 .empty .t{font-size:40px;font-weight:800;letter-spacing:-.03em;line-height:1.05}
 .empty .s{font-size:16px;line-height:1.5}
+.keyform{display:flex;flex-direction:column;gap:10px;width:100%;max-width:340px;margin-top:14px}
+.keyform input{font:inherit;font-size:16px;min-height:48px;padding:0 18px;border-radius:999px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);text-align:center}
+.keyform input::placeholder{color:var(--ink-2)}
 .rest{margin-top:8px;min-height:46px;padding:0 20px;border-radius:999px;border:none;background:var(--ink);color:var(--paper);font-size:14px;font-weight:600}
 
 footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);gap:10px;align-items:center;padding:18px 20px calc(26px + env(safe-area-inset-bottom));font-size:15px;font-weight:600}
@@ -108,7 +111,7 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     <article class="card" id="card" hidden>
       <div class="card-top">
         <span class="sec" id="secLabel"></span>
-        <a class="pill" id="artLink" href="#" target="_blank" rel="noopener" hidden>Zum Artikel<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a>
+        <a class="pill" id="artLink" href="#" target="_blank" rel="noopener" hidden>Mehr erfahren<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a>
       </div>
       <div class="body">
         <div class="sc" id="sc">
@@ -133,6 +136,10 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
       <div class="t" id="emptyT"></div>
       <div class="s" id="emptyS"></div>
       <button class="rest" id="restBtn" hidden></button>
+      <form class="keyform" id="keyForm" hidden>
+        <input id="keyIn" type="text" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Zugangslink einfügen" aria-label="Zugangslink einfügen">
+        <button type="submit" class="rest">Speichern</button>
+      </form>
     </div>
   </main>
 
@@ -166,12 +173,23 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
   var KEY = '', lastLoad = 0, toastTimer = null;
 
   // ── Schlüssel: #key=XYZ einmal übernehmen, aus der URL entfernen ──
+  // Im Browser bleibt #key=… in der Adresse, damit "Zum Home-Bildschirm" den Link samt Key
+  // übernimmt (iOS gibt der Homescreen-App einen eigenen, leeren Speicher). Im Homescreen-Modus
+  // wird der Key nach dem Übernehmen aus der Adresse entfernt.
+  function isStandalone() {
+    return !!(window.navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches));
+  }
+  function parseKey(text) {
+    var t = String(text || '').trim();
+    var m = t.match(/[#&?]key=([^&\s]+)/);
+    try { return m ? decodeURIComponent(m[1]) : t; } catch (e) { return m ? m[1] : t; }
+  }
   function initKey() {
     var m = location.hash.match(/[#&]key=([^&]+)/);
     if (m) {
-      KEY = decodeURIComponent(m[1]);
+      KEY = parseKey(location.hash);
       try { localStorage.setItem(KEYSTORE, KEY); } catch (e) {}
-      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+      if (isStandalone()) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
     } else {
       try { KEY = localStorage.getItem(KEYSTORE) || ''; } catch (e) {}
     }
@@ -230,6 +248,14 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     S.mode = 'feed'; S.shown = null; S.dx = 0; S.pose = 'none'; S.noTrans = true;
     render();
   }
+  $('keyForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var k = parseKey($('keyIn').value);
+    if (!k) return;
+    KEY = k; $('keyIn').value = '';
+    try { localStorage.setItem(KEYSTORE, KEY); } catch (err) {}
+    setMode('loading'); load();
+  });
   function setMode(m, msg) { S.mode = m; S.message = msg || ''; render(); }
   function resync() { chain.then(function () { return load(); }); }
 
@@ -246,15 +272,16 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     if (dayFmt.format(d) >= dayFmt.format(new Date())) return '';
     return ' · seit ' + wdFmt.format(d).replace('.', '');
   }
+  function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } }
   function gmailUrl(t) { return 'https://mail.google.com/mail/u/0/#all/' + t; }
 
   // ── Anzeige ──
   var card = $('card');
   var EMPTY = {
     loading: ['', 'Lädt …'],
-    nokey: ['Kein Zugang.', 'Öffne den Link mit #key=… einmal auf diesem Gerät.'],
+    nokey: ['Kein Zugang.', 'Füge den Zugangslink einmal auf diesem Gerät ein.'],
     noconfig: ['Nicht eingerichtet.', 'In config.js fehlt die Web-App-URL.'],
-    badkey: ['Zugang abgelehnt.', 'Der Schlüssel im Link ist ungültig.'],
+    badkey: ['Zugang abgelehnt.', 'Der Schlüssel ist ungültig. Füge den Zugangslink neu ein.'],
     error: ['Keine Verbindung.', '']
   };
 
@@ -270,7 +297,7 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     card.setAttribute('data-s', c.section);
     $('secLabel').textContent = c.section === 'KI' ? 'Künstliche Intelligenz' : 'Medien';
     var a = $('artLink');
-    if (c.urls && c.urls.length) { a.href = c.urls[0]; a.hidden = false; } else { a.hidden = true; }
+    if (c.urls && c.urls.length) { a.href = c.urls[0]; a.title = hostOf(c.urls[0]); a.hidden = false; } else { a.hidden = true; }
     var tr = $('trend');
     if (c.trending) { tr.textContent = c.trendCount + ' Newsletter'; tr.hidden = false; } else { tr.hidden = true; }
     $('hl').textContent = c.headline;
@@ -334,6 +361,7 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
       else e = EMPTY[S.mode] || ['', ''];
       $('emptyT').textContent = e[0];
       $('emptyS').textContent = (S.mode === 'error' && S.message) ? S.message : e[1];
+      $('keyForm').hidden = !(S.mode === 'nokey' || S.mode === 'badkey');
       var rb = $('restBtn');
       if (S.mode === 'feed' && S.filter !== 'Alle' && all > 0) { rb.textContent = 'Alle anzeigen (' + all + ')'; rb.hidden = false; }
       else rb.hidden = true;
