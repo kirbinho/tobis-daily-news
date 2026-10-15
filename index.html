@@ -64,9 +64,6 @@ h1{margin:0;font-weight:700;font-size:27px;line-height:1.12;letter-spacing:-.022
 .card-bot{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:10px 24px 20px;font-family:var(--mono);font-size:11.5px;line-height:1.6}
 .nl{position:relative}
 .nl a.open{white-space:nowrap;text-underline-offset:3px;padding:6px 0;display:inline-block}
-.menu{position:absolute;right:0;bottom:100%;margin-bottom:6px;background:var(--ink);color:var(--paper);border-radius:18px;padding:6px;min-width:190px;font-family:var(--mono);font-size:12px;font-weight:500}
-.menu a{display:block;padding:10px 12px;text-decoration:none;border-radius:12px}
-.menu a:hover{background:rgba(225,223,218,.14)}
 .hint{position:absolute;inset:0;border-radius:30px;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 16px;pointer-events:none;font-size:clamp(36px,12vw,48px);font-weight:800;letter-spacing:-.03em;opacity:0}
 .hint.read{background:rgba(31,31,31,.9);color:var(--paper)}
 .hint.save{background:rgba(224,122,102,.95);color:var(--ink)}
@@ -111,7 +108,6 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     <article class="card" id="card" hidden>
       <div class="card-top">
         <span class="sec" id="secLabel"></span>
-        <a class="pill" id="artLink" href="#" target="_blank" rel="noopener" hidden>Mehr erfahren<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a>
       </div>
       <div class="body">
         <div class="sc" id="sc">
@@ -124,8 +120,7 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
       <div class="card-bot">
         <div><div id="src"></div><div id="dt"></div></div>
         <div class="nl">
-          <div class="menu" id="menu" hidden></div>
-          <a class="open" id="nlLink" href="#" rel="noopener">Newsletter öffnen</a>
+          <a class="open" id="artLink" href="#" target="_blank" rel="noopener" hidden>Mehr erfahren</a>
         </div>
       </div>
       <div class="hint read" id="hRead">Gelesen</div>
@@ -273,7 +268,6 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     return ' · seit ' + wdFmt.format(d).replace('.', '');
   }
   function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } }
-  function gmailUrl(t) { return 'https://mail.google.com/mail/u/0/#all/' + t; }
 
   // ── Anzeige ──
   var card = $('card');
@@ -304,23 +298,6 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     $('sum').textContent = c.summary;
     $('src').textContent = c.source;
     $('dt').textContent = c.date + since(c);
-    var tids = c.threadIds || [], nl = $('nlLink'), menu = $('menu');
-    menu.hidden = true; menu.textContent = '';
-    if (!tids.length) { nl.hidden = true; }
-    else {
-      nl.hidden = false;
-      if (tids.length === 1) { nl.href = gmailUrl(tids[0]); nl.target = '_blank'; nl.setAttribute('data-multi', ''); }
-      else {
-        nl.href = '#'; nl.removeAttribute('target'); nl.setAttribute('data-multi', '1');
-        var names = String(c.source || '').split(/,\s*/);
-        tids.forEach(function (t, i) {
-          var m = document.createElement('a');
-          m.href = gmailUrl(t); m.target = '_blank'; m.rel = 'noopener';
-          m.textContent = names.length === tids.length ? names[i] : 'Newsletter ' + (i + 1);
-          menu.appendChild(m);
-        });
-      }
-    }
     $('sc').scrollTop = 0;
   }
 
@@ -378,7 +355,6 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     toastTimer = setTimeout(hideToast, withUndo ? 3500 : 5500);
   }
   function hideToast() { clearTimeout(toastTimer); $('toast').hidden = true; }
-  function hideMenu() { $('menu').hidden = true; }
 
   // ── Aktionen (optimistisch, Requests laufen nacheinander im Hintergrund) ──
   function ensureFilterShows(section) {
@@ -400,7 +376,7 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     var q = queue(S.filter);
     if (S.mode !== 'feed' || !q.length || S.leaving) return;
     if (isOffline()) { toast('Keine Verbindung. Aktion nicht ausgeführt.', false); return; }
-    var it = q[0]; S.leaving = true; hideMenu();
+    var it = q[0]; S.leaving = true;
     var finish = function () {
       S.leaving = false;
       var entry = { id: it.id, section: it.section, type: dir > 0 ? 'save' : 'read' };
@@ -420,7 +396,7 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     var q = queue(S.filter);
     if (S.mode !== 'feed' || q.length < 2 || S.leaving) return;
     if (isOffline()) { toast('Keine Verbindung. Aktion nicht ausgeführt.', false); return; }
-    var it = q[0]; S.leaving = true; hideMenu();
+    var it = q[0]; S.leaving = true;
     var finish = function () {
       S.leaving = false;
       var entry = { id: it.id, section: it.section, type: 'skip' };
@@ -442,7 +418,7 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     var e = S.history.pop(), it = S.byId[e.id];
     ensureFilterShows(e.section);
     S.order = [e.id].concat(S.order.filter(function (x) { return x !== e.id; }));
-    hideToast(); hideMenu();
+    hideToast();
     S.shown = null;
     if (reduce) { S.pose = 'none'; S.dx = 0; S.noTrans = true; render(); }
     else {
@@ -496,7 +472,7 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
   }
   card.addEventListener('pointerup', up);
   card.addEventListener('pointercancel', up);
-  ['artLink', 'nlLink', 'menu'].forEach(function (id) {
+  ['artLink'].forEach(function (id) {
     $(id).addEventListener('pointerdown', function (e) { e.stopPropagation(); });
   });
 
@@ -509,14 +485,8 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
   $('restBtn').addEventListener('click', function () { S.filter = 'Alle'; S.dx = 0; S.pose = 'none'; S.noTrans = true; S.shown = null; render(); });
   Array.prototype.forEach.call(document.querySelectorAll('.chip'), function (b) {
     b.addEventListener('click', function () {
-      S.filter = b.getAttribute('data-f'); S.dx = 0; S.pose = 'none'; S.noTrans = true; S.shown = null; hideMenu(); render();
+      S.filter = b.getAttribute('data-f'); S.dx = 0; S.pose = 'none'; S.noTrans = true; S.shown = null; render();
     });
-  });
-  $('nlLink').addEventListener('click', function (e) {
-    if ($('nlLink').getAttribute('data-multi') === '1') { e.preventDefault(); $('menu').hidden = !$('menu').hidden; }
-  });
-  document.addEventListener('click', function (e) {
-    if (!$('menu').hidden && !e.target.closest('.nl')) hideMenu();
   });
   $('sc').addEventListener('scroll', checkScroll);
   window.addEventListener('resize', checkScroll);
