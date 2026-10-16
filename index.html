@@ -76,7 +76,8 @@ h1{margin:0;font-weight:700;font-size:27px;line-height:1.12;letter-spacing:-.022
 .keyform input::placeholder{color:var(--ink-2)}
 .rest{margin-top:8px;min-height:46px;padding:0 20px;border-radius:999px;border:none;background:var(--ink);color:var(--paper);font-size:14px;font-weight:600}
 
-footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);gap:10px;align-items:center;padding:18px 20px calc(26px + env(safe-area-inset-bottom));font-size:15px;font-weight:600}
+footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);gap:10px;align-items:center;padding:18px 20px calc(14px + env(safe-area-inset-bottom));font-size:15px;font-weight:600}
+.run{grid-column:1/-1;text-align:center;font-weight:400;font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--ink-2);font-variant-numeric:tabular-nums}
 .btn{min-height:54px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid var(--ink);background:transparent}
 .btn.save{background:var(--signal);border-color:var(--signal)}
 .round{width:54px;height:54px;border-radius:27px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--ink);background:transparent;padding:0}
@@ -143,6 +144,7 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     <button class="round undo" id="bUndo" aria-label="Rückgängig"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F1F1F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
     <button class="round skip" id="bSkip" aria-label="Später"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F1F1F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></button>
     <button class="btn save" id="bSave">Merken<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1F1F1F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+    <div class="run" id="run" hidden></div>
   </footer>
   <div class="keys">← Gelesen &nbsp;·&nbsp; → Merken &nbsp;·&nbsp; ↓ Später &nbsp;·&nbsp; Z Rückgängig &nbsp;·&nbsp; Enter Artikel</div>
 </div>
@@ -234,6 +236,7 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     });
   }
   function apply(r) {
+    S.lastRun = r.lastRun || 0;
     S.byId = {};
     (r.items || []).concat(r.undoItems || []).forEach(function (i) { S.byId[i.id] = i; });
     S.order = (r.items || []).filter(function (i) { return i.status === 'open'; }).map(function (i) { return i.id; });
@@ -279,7 +282,19 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     error: ['Keine Verbindung.', '']
   };
 
+  function nextRunWord() {
+    var h = parseInt(new Intl.DateTimeFormat('de-DE', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23' }).format(new Date()), 10);
+    return h < 19 ? 'heute' : 'morgen';
+  }
+  function lastRunText(ms) {
+    if (!ms) return '';
+    var p = {};
+    new Intl.DateTimeFormat('de-DE', { timeZone: TZ, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = x.value; });
+    return p.day + '-' + p.month + ' / ' + p.hour + ':' + p.minute;
+  }
   function renderHeader() {
+    var rt = lastRunText(S.lastRun); $('run').textContent = rt; $('run').hidden = !rt;
     $('date').textContent = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()) + (isOffline() ? ' · offline' : '');
     ['Alle', 'KI', 'Medien'].forEach(function (f) { $('c' + f).textContent = String(queue(f).length); });
     Array.prototype.forEach.call(document.querySelectorAll('.chip'), function (b) {
@@ -334,7 +349,7 @@ footer{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px minmax(0,1fr);
     } else {
       card.hidden = true; S.shown = null; $('empty').hidden = false;
       var all = queue('Alle').length, e;
-      if (S.mode === 'feed') e = ['Alles gelesen.', 'Die nächste Ausgabe kommt morgen um 7 Uhr.'];
+      if (S.mode === 'feed') e = ['Alles gelesen.', 'Die nächste Ausgabe kommt ' + nextRunWord() + ' Abend gegen 19 Uhr.'];
       else e = EMPTY[S.mode] || ['', ''];
       $('emptyT').textContent = e[0];
       $('emptyS').textContent = (S.mode === 'error' && S.message) ? S.message : e[1];
